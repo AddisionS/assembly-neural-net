@@ -10,6 +10,7 @@ extern "C" {
     float dot(const float* a, const float* b, size_t n);
     void  vec_add(const float* a, const float* b, float* out, size_t n);
     void  axpy(float alpha, const float* x, float* y, size_t n);
+    float relu(float x);
 }
 
 // Compare asm result with C++ reference; print PASS/FAIL
@@ -40,6 +41,10 @@ int main() {
     check("axpy0", w[0], 0.4f);
     check("axpy1", w[1], 0.3f);
     check("axpy2", w[2], 0.2f);
+
+    check("relu_pos",  relu(3.5f),  3.5f);
+    check("relu_neg",  relu(-2.0f), 0.0f);
+    check("relu_zero", relu(0.0f),  0.0f);
 
     return 0;
 }
