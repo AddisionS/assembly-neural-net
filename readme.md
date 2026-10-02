@@ -1,8 +1,12 @@
 # Assembly Neural Network
 
-A handwritten-digit classifier (MNIST) whose math is written in **x86-64 assembly (NASM)**. C++ is used only as a harness: loading files, shuffling, printing, and unit tests.
+A handwritten-digit classifier (MNIST) whose math is written in **x86-64 assembly (NASM)**. C++ is used only as a harness: loading files, shuffling, printing, unit tests, and the visual demo.
 
 The goal was never to compete with PyTorch. It was to understand how neural-network operations turn into CPU instructions, starting from zero assembly and zero ML.
+
+![demo](images/demo.png)
+
+*Output of `./demo`: one random test image per digit, with the network's confidence for every digit. Green border = correct, red = wrong.*
 
 ## Result
 
@@ -17,7 +21,16 @@ epoch 10  avg loss 0.0134  test accuracy 97.85%
 
 Accuracy is measured on the 10,000 MNIST test images, which are never used for training.
 
-Every forward and backward step in the training loop is an assembly function. This includes `exp`, which is implemented from scratch (no libm).
+Every forward and backward step in the training loop and in the demo is an assembly function. This includes `exp`, which is implemented from scratch (no libm).
+
+## Demo
+
+`./demo` loads the trained weights, picks one random test image of each digit 0 to 9, and runs the forward pass in assembly. For each digit it shows:
+
+- **In the console:** the image as ASCII art, plus a confidence bar for every digit and the network's pick
+- **In `demo.html`:** the real 28x28 image enlarged, with probability bars (open it in a browser)
+
+Every run picks different images. Since test accuracy is about 97.85%, most runs get 10/10 and some get 9/10. When it misses, it is usually on sloppy or unusual handwriting, and it can still be very confident (a 4 read as a 6 at 99.8% in one run). Confidence is not the same as correctness.
 
 ## Project structure
 
@@ -28,10 +41,14 @@ src/
   train.cpp        first experiment: one neuron learns y = 2x
   mnist.h          MNIST file loader
   mnist_view.cpp   prints digits as ASCII art to verify the data
-  train_mlp.cpp    the digit classifier
+  train_mlp.cpp    trains the digit classifier and saves weights.bin
+  demo.cpp         loads weights.bin, shows predictions (console + demo.html)
 data/     MNIST files (not committed)
+images/   screenshots for this README
 Makefile
 ```
+
+Generated files (not committed): `build/`, `weights.bin`, `demo.html`, and the compiled programs.
 
 ## Requirements
 
@@ -61,16 +78,18 @@ make              # assembles asm/*.asm into build/ and builds all programs
 ./nn              # unit tests, should end with ALL PASS
 ./mnist_view      # first 3 training digits as ASCII art (5, 0, 4)
 ./train           # one neuron learns y = 2x
-./train_mlp       # trains the digit classifier (about 10 epochs)
+./train_mlp       # trains the classifier, writes weights.bin (about 10 epochs)
+./demo            # one digit at a time, press Enter to advance
+./demo all        # all ten at once, no pauses
 ```
 
-Run everything from the project root, since data paths are relative.
+Then open `demo.html` in a browser. Run everything from the project root, since data paths are relative. `./demo` needs `weights.bin`, so run `./train_mlp` first.
 
 ## The assembly functions
 
 All are scalar `float32` (SSE: `movss`, `addss`, `mulss`, ...), following the System V calling convention.
 
-| Function | Does | Used in training |
+| Function | Does | Used by the network |
 |---|---|---|
 | `add_f`, `mul_f` | scalar add / multiply | warm-up |
 | `sum_array` | sum of an array | warm-up |
@@ -90,11 +109,11 @@ All are scalar `float32` (SSE: `movss`, `addss`, `mulss`, ...), following the Sy
 | `outer_update` | `W[r] -= lr * delta[r] * x` for every row | yes |
 | `exp_f` | `e^x` via range reduction, polynomial, exponent bits | yes (via `softmax`) |
 | `softmax` | scores to probabilities | yes |
-| `argmax` | index of the largest value | yes (accuracy) |
+| `argmax` | index of the largest value | yes (prediction, accuracy) |
 
-## How training works
+## How it works
 
-For each image:
+**Training**, for each image:
 
 1. **Forward:** `h = relu(W1 x + b1)`, then `scores = W2 h + b2`, then `probs = softmax(scores)`
 2. **Output error:** `delta2 = probs - target` (target is one-hot)
@@ -102,6 +121,8 @@ For each image:
 4. **Update:** `W -= lr * delta * input` per layer, biases updated with `axpy`
 
 Learning rate is 0.01 with He-style random initialization. The weight update is the `axpy` function called with `alpha = -lr * error`.
+
+**Prediction** (the demo) is just the forward pass: `layer_forward`, `matvec`, `vec_add`, `softmax`, then `argmax` picks the digit with the highest probability.
 
 ## Assembly concepts used, in the order they were learned
 
@@ -121,6 +142,5 @@ For every function: write the C++ reference, write the assembly, compare in `mai
 ## Possible next steps
 
 - SIMD (`mulps` / `addps`, `vfmadd231ps`) in `dot` and `axpy`, the two functions that do nearly all the work
-- Save and load trained weights
-- A demo program that shows a random test digit and the network's prediction
 - Mini-batches, a larger hidden layer, or Fashion-MNIST
+- Moving the remaining C++ (training loop, file loading) into assembly

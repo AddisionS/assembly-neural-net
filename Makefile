@@ -2,7 +2,7 @@ ASM := $(wildcard asm/*.asm)
 OBJ := $(ASM:asm/%.asm=build/%.o)
 CXX_FLAGS := -O2
 
-all: nn train train_mlp mnist_view
+all: nn train train_mlp mnist_view demo
 
 nn: src/main.cpp $(OBJ)
 	g++ $(CXX_FLAGS) src/main.cpp $(OBJ) -o nn
@@ -22,3 +22,6 @@ build/%.o: asm/%.asm
 
 clean:
 	rm -rf build nn train train_mlp mnist_view
+
+demo: src/demo.cpp src/mnist.h $(OBJ)
+	g++ $(CXX_FLAGS) src/demo.cpp $(OBJ) -o demo

@@ -84,5 +84,14 @@ int main() {
                     epoch, loss / n_train, 100.0 * correct / n_test);
         std::fflush(stdout);
     }
+
+    FILE* wf = std::fopen("weights.bin", "wb");
+    std::fwrite(W1.data(), sizeof(float), W1.size(), wf);
+    std::fwrite(b1.data(), sizeof(float), b1.size(), wf);
+    std::fwrite(W2.data(), sizeof(float), W2.size(), wf);
+    std::fwrite(b2.data(), sizeof(float), b2.size(), wf);
+    std::fclose(wf);
+    std::printf("saved weights.bin\n");
+    
     return 0;
 }
