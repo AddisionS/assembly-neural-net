@@ -1,2 +1,7 @@
+build/
+data/
 *.o
 nn
+train
+train_mlp
+mnist_view
